@@ -1,37 +1,66 @@
 import pytest
 import requests
+import responses
 
-@pytest.fixture
-def mock_requests_get(mocker):
-    response_json = {"businesses":[{"name":"Teton Elementary"}]}
-    
-    # Patching requests.get to return a mocked response
-    mocker.patch.object(requests, 'get', return_value=MockResponse(response_json))
 
-class MockResponse:
-    def __init__(self, json_data, status_code=200):
-        self.json_data = json_data
-        self.status_code = status_code
+# ============================================================
+# Test 1: JSON response for /data/all
+# ============================================================
+@responses.activate
+def test_data_endpoint():
+    # Mocked JSON response
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:8000/data/all",
+        json={"businesses": [{"name": "Teton Elementary"}]},
+        status=200
+    )
 
-    def json(self):
-        return self.json_data
+    response = requests.get("http://127.0.0.1:8000/data/all")
 
-def test_data_endpoint(mock_requests_get):
-    # Make the HTTP GET request
-    response = requests.get('http://127.0.0.1:8000/data/all')
-
-    # Verify the response status code
+    # Status code check
     assert response.status_code == 200
 
-    # Verify the response content
+    # JSON structure checks
     data = response.json()
     assert isinstance(data, dict)
-    assert 'businesses' in data
-    businesses = data['businesses']
+    assert "businesses" in data
+
+    businesses = data["businesses"]
     assert isinstance(businesses, list)
     assert len(businesses) > 0
-    first_business = businesses[0]
-    assert isinstance(first_business, dict)
-    assert 'name' in first_business
-    assert first_business['name'] == 'Teton Elementary'
-    # Add additional assertions as needed based on the expected response
+
+    first = businesses[0]
+    assert isinstance(first, dict)
+    assert first["name"] == "Teton Elementary"
+
+
+# ============================================================
+# Test 2: Empty TEXT response for URL with parameters
+# ============================================================
+@responses.activate
+def test_data_endpoint_with_params():
+    # URL with expected query parameters
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:8000/data/all?username=admin&password=qwerty",
+        body="",   # empty text response
+        status=200,
+        content_type="text/plain"
+    )
+
+    response = requests.get(
+        "http://127.0.0.1:8000/data/all",
+        params={"username": "admin", "password": "qwerty"}
+    )
+
+    assert response.status_code == 200
+
+    # Accept text OR empty JSON safely
+    try:
+        content = response.json()
+    except ValueError:
+        content = response.text
+
+    # For this test, it must be completely empty
+    assert content == ""
