@@ -1,47 +1,40 @@
 import requests
 
+BASE_URL = "http://127.0.0.1:8000/users"
+
 # ============================================================
-# Test 1: JSON response for /data/all
+# Unauthorized login test
 # ============================================================
-def test_data_endpoint(requests_mock):
+def test_get_users_unauthorized(requests_mock):
     requests_mock.get(
-        "http://127.0.0.1:8000/data/all",
-        json={"businesses": [{"name": "Teton Elementary"}]},
-        status_code=200,
+        BASE_URL,
+        text="",     # empty body
+        status_code=401
     )
 
-    response = requests.get("http://127.0.0.1:8000/data/all")
+    response = requests.get(BASE_URL, params={
+        "username": "admin",
+        "password": "admin"
+    })
 
-    assert response.status_code == 200
-
-    data = response.json()
-    assert isinstance(data, dict)
-    assert "businesses" in data
-    assert isinstance(data["businesses"], list)
-    assert data["businesses"][0]["name"] == "Teton Elementary"
+    assert response.status_code == 401
+    assert response.text == ""
 
 
 # ============================================================
-# Test 2: Empty TEXT response for URL with parameters
+# Successful login test
 # ============================================================
-def test_data_endpoint_with_params(requests_mock):
+def test_get_users_authorized(requests_mock):
     requests_mock.get(
-        "http://127.0.0.1:8000/data/all",
-        text="",   # empty response body
+        BASE_URL,
+        text="",    # empty body
         status_code=200
     )
 
-    response = requests.get(
-        "http://127.0.0.1:8000/data/all",
-        params={"username": "admin", "password": "qwerty"}
-    )
+    response = requests.get(BASE_URL, params={
+        "username": "admin",
+        "password": "qwerty"
+    })
 
     assert response.status_code == 200
-
-    # Try JSON first, fall back to text
-    try:
-        content = response.json()
-    except ValueError:
-        content = response.text
-
-    assert content == ""
+    assert response.text == ""
